@@ -33,6 +33,11 @@ class Settings:
         "",
     )
 
+    check_token: str = os.getenv(
+        "CHECK_TOKEN",
+        "",
+    )
+
     email_sender: str = os.getenv(
         "EMAIL_SENDER",
         "",

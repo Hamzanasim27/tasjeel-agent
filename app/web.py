@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 
 from app.config import settings
 from app.scraper.browser import TasjeelBrowser
@@ -30,7 +30,20 @@ def health():
 
 
 @app.get("/check")
-def check_tasjeel():
+def check_tasjeel(
+    x_cron_secret: str = Header(default="")
+):
+    if not settings.check_token:
+        raise HTTPException(
+            status_code=500,
+            detail="CHECK_TOKEN is not configured",
+        )
+
+    if x_cron_secret != settings.check_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
 
     browser = TasjeelBrowser()
 
@@ -39,7 +52,6 @@ def check_tasjeel():
         print("STARTING TASJEEL CHECK")
         print("=" * 60)
 
-        # Start Playwright inside this request's worker thread
         context = browser.start()
 
         page = (
@@ -48,20 +60,15 @@ def check_tasjeel():
             else context.new_page()
         )
 
-        # Open Tasjeel
         open_dashboard(page)
 
-        # Check login
         if not is_logged_in(page):
-            print("LOGIN REQUIRED")
-
             return {
                 "status": "login_required",
                 "message": "Tasjeel/Microsoft login session is not available",
                 "url": page.url,
             }
 
-        # Open dashboard
         page.goto(
             settings.tasjeel_dashboard_url,
             wait_until="domcontentloaded",
@@ -72,12 +79,9 @@ def check_tasjeel():
 
         print("Dashboard:", page.url)
 
-        # Find courses
         courses = get_course_links(page)
 
         if not courses:
-            print("No courses found.")
-
             return {
                 "status": "success",
                 "courses_scanned": 0,
@@ -88,28 +92,21 @@ def check_tasjeel():
 
         total_new = 0
 
-        # Scan every course
         for course in courses:
 
-            print()
-            print(f"Reading course: {course['course_name']}")
+            print(
+                f"Reading course: {course['course_name']}"
+            )
 
             course = extract_course_information(
                 page,
-                course
+                course,
             )
 
-            new_items = scan_course(
+            total_new += scan_course(
                 page,
-                course
+                course,
             )
-
-            total_new += new_items
-
-        print()
-        print("=" * 60)
-        print("SCAN COMPLETE")
-        print("=" * 60)
 
         return {
             "status": "success",
@@ -119,11 +116,7 @@ def check_tasjeel():
 
     except Exception as e:
 
-        print()
-        print("=" * 60)
-        print("SCAN ERROR")
-        print("=" * 60)
-        print(e)
+        print("SCAN ERROR:", e)
 
         return {
             "status": "error",
@@ -131,8 +124,5 @@ def check_tasjeel():
         }
 
     finally:
-
-        # Always close Playwright after the scan
         browser.stop()
-
         print("Browser closed.")
