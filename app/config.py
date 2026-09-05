@@ -1,26 +1,46 @@
 import os
 from dataclasses import dataclass
+
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
 
 @dataclass(frozen=True)
 class Settings:
+    # Tasjeel
     tasjeel_dashboard_url: str = os.getenv(
         "TASJEEL_DASHBOARD_URL",
         "https://tasjeel.cust.edu.pk/student/dashboard",
     )
 
-    supabase_url: str = os.getenv("SUPABASE_URL", "")
-    supabase_key: str = os.getenv("SUPABASE_KEY", "")
-
-    check_interval_minutes: int = int(
-        os.getenv("CHECK_INTERVAL_MINUTES", "240")
+    # Supabase
+    supabase_url: str = os.getenv(
+        "SUPABASE_URL",
+        "",
     )
 
+    supabase_key: str = os.getenv(
+        "SUPABASE_KEY",
+        "",
+    )
+
+    # Scheduler
+    check_interval_minutes: int = int(
+        os.getenv(
+            "CHECK_INTERVAL_MINUTES",
+            "240",
+        )
+    )
+
+    # Playwright
     headless: bool = (
-        os.getenv("HEADLESS", "false").lower() == "true"
+        os.getenv(
+            "HEADLESS",
+            "false",
+        ).lower()
+        == "true"
     )
 
     browser_profile_dir: str = os.getenv(
@@ -28,16 +48,36 @@ class Settings:
         "./data/browser_profile",
     )
 
+    # Tasjeel authentication
     tasjeel_auth_state_b64: str = os.getenv(
         "TASJEEL_AUTH_STATE_B64",
         "",
     )
 
+    # Cron security
     check_token: str = os.getenv(
         "CHECK_TOKEN",
         "",
     )
 
+    # Resend
+    resend_api_key: str = os.getenv(
+        "RESEND_API_KEY",
+        "",
+    )
+
+    email_from: str = os.getenv(
+        "EMAIL_FROM",
+        "onboarding@resend.dev",
+    )
+
+    email_recipient: str = os.getenv(
+        "EMAIL_RECIPIENT",
+        "",
+    )
+
+    # Old Gmail settings kept temporarily
+    # They are no longer used by Resend.
     email_sender: str = os.getenv(
         "EMAIL_SENDER",
         "",
@@ -48,9 +88,5 @@ class Settings:
         "",
     )
 
-    email_recipient: str = os.getenv(
-        "EMAIL_RECIPIENT",
-        "",
-    )
 
 settings = Settings()

@@ -1,5 +1,4 @@
-import smtplib
-from email.message import EmailMessage
+import resend
 
 from app.config import settings
 
@@ -8,27 +7,34 @@ def send_email(
     subject: str,
     body: str,
 ):
-    sender = settings.email_sender
-    app_password = settings.email_app_password
-    recipient = settings.email_recipient
+    if not settings.resend_api_key:
+        raise RuntimeError(
+            "RESEND_API_KEY is missing from environment variables."
+        )
 
-    if not sender:
-        raise RuntimeError("EMAIL_SENDER is missing from .env")
+    if not settings.email_recipient:
+        raise RuntimeError(
+            "EMAIL_RECIPIENT is missing from environment variables."
+        )
 
-    if not app_password:
-        raise RuntimeError("EMAIL_APP_PASSWORD is missing from .env")
+    if not settings.email_from:
+        raise RuntimeError(
+            "EMAIL_FROM is missing from environment variables."
+        )
 
-    if not recipient:
-        raise RuntimeError("EMAIL_RECIPIENT is missing from .env")
+    resend.api_key = settings.resend_api_key
 
-    message = EmailMessage()
-    message["From"] = sender
-    message["To"] = recipient
-    message["Subject"] = subject
-    message.set_content(body)
+    params = {
+        "from": settings.email_from,
+        "to": [settings.email_recipient],
+        "subject": subject,
+        "text": body,
+    }
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(sender, app_password)
-        smtp.send_message(message)
+    response = resend.Emails.send(params)
 
-    print(f"  EMAIL SENT: {subject}")
+    print(
+        f"  EMAIL SENT VIA RESEND: {subject}"
+    )
+
+    return response
