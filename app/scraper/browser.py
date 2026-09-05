@@ -1,9 +1,6 @@
 from pathlib import Path
 
-from playwright.sync_api import (
-    sync_playwright,
-    BrowserContext,
-)
+from playwright.sync_api import sync_playwright, BrowserContext
 
 from app.config import settings
 
@@ -16,36 +13,16 @@ class TasjeelBrowser:
 
     def start(self):
 
-        profile_path = Path(
-            settings.browser_profile_dir
-        )
-
-        profile_path.mkdir(
-            parents=True,
-            exist_ok=True
-        )
+        profile = Path(settings.browser_profile_dir)
+        profile.mkdir(parents=True, exist_ok=True)
 
         self.playwright = sync_playwright().start()
 
-        self.context = (
-            self.playwright
-            .chromium
-            .launch_persistent_context(
-                user_data_dir=str(profile_path),
-
-                headless=settings.headless,
-
-                viewport={
-                    "width": 1440,
-                    "height": 900,
-                },
-
-                # Keeps browser open-like behavior
-                # suitable for the first manual login.
-                args=[
-                    "--start-maximized"
-                ],
-            )
+        self.context = self.playwright.chromium.launch_persistent_context(
+            user_data_dir=str(profile),
+            headless=settings.headless,
+            viewport={"width": 1440, "height": 900},
+            executable_path=None,
         )
 
         return self.context
