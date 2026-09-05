@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.background import BackgroundTasks
 
 from app.config import settings
 from app.scraper.browser import TasjeelBrowser
@@ -29,27 +30,17 @@ def health():
     }
 
 
-@app.get("/check")
-def check_tasjeel(
-    x_cron_secret: str = Header(default="")
-):
-    if not settings.check_token:
-        raise HTTPException(
-            status_code=500,
-            detail="CHECK_TOKEN is not configured",
-        )
-
-    if x_cron_secret != settings.check_token:
-        raise HTTPException(
-            status_code=401,
-            detail="Unauthorized",
-        )
+def run_tasjeel_scan():
+    """
+    Actual long-running Tasjeel scan.
+    This runs after /trigger returns.
+    """
 
     browser = TasjeelBrowser()
 
     try:
         print("=" * 60)
-        print("STARTING TASJEEL CHECK")
+        print("STARTING TASJEEL BACKGROUND SCAN")
         print("=" * 60)
 
         context = browser.start()
@@ -63,11 +54,9 @@ def check_tasjeel(
         open_dashboard(page)
 
         if not is_logged_in(page):
-            return {
-                "status": "login_required",
-                "message": "Tasjeel/Microsoft login session is not available",
-                "url": page.url,
-            }
+            print("Tasjeel authentication expired.")
+
+            return
 
         page.goto(
             settings.tasjeel_dashboard_url,
@@ -77,25 +66,23 @@ def check_tasjeel(
 
         page.wait_for_timeout(1500)
 
-        print("Dashboard:", page.url)
-
         courses = get_course_links(page)
 
         if not courses:
-            return {
-                "status": "success",
-                "courses_scanned": 0,
-                "new_items": 0,
-            }
+            print("No courses found.")
+            return
 
-        print(f"Found {len(courses)} course(s).")
+        print(
+            f"Found {len(courses)} course(s)."
+        )
 
         total_new = 0
 
         for course in courses:
 
             print(
-                f"Reading course: {course['course_name']}"
+                f"Reading course: "
+                f"{course['course_name']}"
             )
 
             course = extract_course_information(
@@ -108,21 +95,76 @@ def check_tasjeel(
                 course,
             )
 
-        return {
-            "status": "success",
-            "courses_scanned": len(courses),
-            "new_items": total_new,
-        }
+        print("=" * 60)
+        print("BACKGROUND SCAN COMPLETE")
+        print(f"Courses scanned: {len(courses)}")
+        print(f"New items: {total_new}")
+        print("=" * 60)
 
-    except Exception as e:
+    except Exception as exc:
 
-        print("SCAN ERROR:", e)
-
-        return {
-            "status": "error",
-            "message": str(e),
-        }
+        print("=" * 60)
+        print("BACKGROUND SCAN ERROR")
+        print(exc)
+        print("=" * 60)
 
     finally:
+
         browser.stop()
+
         print("Browser closed.")
+
+
+@app.get("/check")
+def check_tasjeel(
+    x_cron_secret: str = Header(default="")
+):
+
+    if not settings.check_token:
+        raise HTTPException(
+            status_code=500,
+            detail="CHECK_TOKEN is not configured",
+        )
+
+    if x_cron_secret != settings.check_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
+    # Perform scan immediately.
+    # This route is useful for manual testing.
+    run_tasjeel_scan()
+
+    return {
+        "status": "success",
+        "message": "Scan completed",
+    }
+
+
+@app.get("/trigger")
+def trigger_tasjeel(
+    background_tasks: BackgroundTasks,
+    x_cron_secret: str = Header(default="")
+):
+
+    if not settings.check_token:
+        raise HTTPException(
+            status_code=500,
+            detail="CHECK_TOKEN is not configured",
+        )
+
+    if x_cron_secret != settings.check_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
+    background_tasks.add_task(
+        run_tasjeel_scan
+    )
+
+    return {
+        "status": "accepted",
+        "message": "Tasjeel scan started",
+    }
