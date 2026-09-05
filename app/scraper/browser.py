@@ -22,7 +22,6 @@ class TasjeelBrowser:
             user_data_dir=str(profile),
             headless=settings.headless,
             viewport={"width": 1440, "height": 900},
-            executable_path=None,
         )
 
         return self.context
