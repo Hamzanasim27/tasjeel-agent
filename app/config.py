@@ -16,7 +16,7 @@ class Settings:
     supabase_key: str = os.getenv("SUPABASE_KEY", "")
 
     check_interval_minutes: int = int(
-        os.getenv("CHECK_INTERVAL_MINUTES", "15")
+        os.getenv("CHECK_INTERVAL_MINUTES", "240")
     )
 
     headless: bool = (
@@ -28,9 +28,24 @@ class Settings:
         "./data/browser_profile",
     )
 
-    email_sender: str = os.getenv("EMAIL_SENDER", "")
-    email_app_password: str = os.getenv("EMAIL_APP_PASSWORD", "")
-    email_recipient: str = os.getenv("EMAIL_RECIPIENT", "")
+    tasjeel_auth_state_b64: str = os.getenv(
+        "TASJEEL_AUTH_STATE_B64",
+        "",
+    )
 
+    email_sender: str = os.getenv(
+        "EMAIL_SENDER",
+        "",
+    )
+
+    email_app_password: str = os.getenv(
+        "EMAIL_APP_PASSWORD",
+        "",
+    )
+
+    email_recipient: str = os.getenv(
+        "EMAIL_RECIPIENT",
+        "",
+    )
 
 settings = Settings()
